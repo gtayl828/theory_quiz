@@ -401,11 +401,20 @@ const SHARP_DISP = {'C#':'C♯','D#':'D♯','F#':'F♯','G#':'G♯','A#':'A♯'}
 const FLAT_DISP  = {'C#':'D♭','D#':'E♭','F#':'G♭','G#':'A♭','A#':'B♭'};
 const FLAT_KEY_SET = new Set(['F','A#','D#','G#']);
 
+// Combined enharmonic display — used in question text so nothing is ambiguous
+const BOTH_DISP = {'C#':'C♯/D♭','D#':'D♯/E♭','F#':'F♯/G♭','G#':'G♯/A♭','A#':'A♯/B♭'};
+
+// dn: single preferred name (for chromatic row buttons and answer strings)
 function dn(noteStr, keyRoot) {
   const useFl = FLAT_KEY_SET.has(NOTES[keyRoot]);
   if (useFl && FLAT_DISP[noteStr])   return FLAT_DISP[noteStr];
   if (!useFl && SHARP_DISP[noteStr]) return SHARP_DISP[noteStr];
   return noteStr;
+}
+
+// dnQ: enharmonic name for use in question text — always shows both names for accidentals
+function dnQ(noteStr) {
+  return BOTH_DISP[noteStr] || noteStr;
 }
 
 // The 7 natural notes and their chromatic indices
@@ -414,21 +423,21 @@ function triadNotes(ri, quality) {
 }
 
 const KEY_SIGS_SHARP = [
-  { key:'C',  disp:'C major',  acc:'None',     notes:[] },
-  { key:'G',  disp:'G major',  acc:'1 sharp',  notes:[6]           },
-  { key:'D',  disp:'D major',  acc:'2 sharps', notes:[6,1]         },
-  { key:'A',  disp:'A major',  acc:'3 sharps', notes:[6,1,8]       },
-  { key:'E',  disp:'E major',  acc:'4 sharps', notes:[6,1,8,3]     },
-  { key:'B',  disp:'B major',  acc:'5 sharps', notes:[6,1,8,3,10]  },
-  { key:'F#', disp:'F♯ major', acc:'6 sharps', notes:[6,1,8,3,10,4,11] },
-  { key:'C#', disp:'C♯ major', acc:'7 sharps', notes:[6,1,8,3,10,4,11,0] },
+  { key:'C',  disp:'C major',       acc:'None',     notes:[] },
+  { key:'G',  disp:'G major',       acc:'1 sharp',  notes:[6]           },
+  { key:'D',  disp:'D major',       acc:'2 sharps', notes:[6,1]         },
+  { key:'A',  disp:'A major',       acc:'3 sharps', notes:[6,1,8]       },
+  { key:'E',  disp:'E major',       acc:'4 sharps', notes:[6,1,8,3]     },
+  { key:'B',  disp:'B major',       acc:'5 sharps', notes:[6,1,8,3,10]  },
+  { key:'F#', disp:'F♯/G♭ major',  acc:'6 sharps', notes:[6,1,8,3,10,4,11] },
+  { key:'C#', disp:'C♯/D♭ major',  acc:'7 sharps', notes:[6,1,8,3,10,4,11,0] },
 ];
 const KEY_SIGS_FLAT = [
-  { key:'C',  disp:'C major',  acc:'None',    notes:[] },
-  { key:'F',  disp:'F major',  acc:'1 flat',  notes:[10]       },
-  { key:'A#', disp:'B♭ major', acc:'2 flats', notes:[10,3]     },
-  { key:'D#', disp:'E♭ major', acc:'3 flats', notes:[10,3,8]   },
-  { key:'G#', disp:'A♭ major', acc:'4 flats', notes:[10,3,8,1] },
+  { key:'C',  disp:'C major',       acc:'None',    notes:[] },
+  { key:'F',  disp:'F major',       acc:'1 flat',  notes:[10]       },
+  { key:'A#', disp:'A♯/B♭ major',  acc:'2 flats', notes:[10,3]     },
+  { key:'D#', disp:'D♯/E♭ major',  acc:'3 flats', notes:[10,3,8]   },
+  { key:'G#', disp:'G♯/A♭ major',  acc:'4 flats', notes:[10,3,8,1] },
 ];
 
 // ── Deck builder ──────────────────────────────────────────────────────
@@ -440,7 +449,7 @@ function buildDeck(cats) {
       for (const q of ['maj','min']) {
         if (!cats.has(q)) continue;
         const notes = triadNotes(ri, q);
-        const name  = dn(NOTES[ri], ri) + (q==='min'?'m':'');
+        const name  = dnQ(NOTES[ri]) + (q==='min'?'m':'');
         const noteStr = notes.map(n=>dn(NOTES[n],ri)).join(' – ');
         qs.push({
           id:      `triad_${NOTES[ri]}_${q}`,
