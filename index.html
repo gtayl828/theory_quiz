@@ -138,40 +138,27 @@ h1 { font-family:var(--display-font); font-size:34px; letter-spacing:5px; color:
 }
 .chrom-rows { display:flex; flex-direction:column; gap:6px; }
 
-/* Natural notes row */
-.chrom-natural { display:flex; gap:5px; }
-/* Accidental row — aligned under their natural neighbors */
-.chrom-accidental {
-  display:flex; gap:5px; padding-left:0;
-}
+/* Single chromatic row */
+.chrom-row { display:flex; gap:5px; flex-wrap:wrap; }
 
 .note-btn {
   font-family:var(--mono-font); font-size:13px; font-weight:700;
+  width:56px; height:52px;
   border-radius:5px; cursor:pointer; transition:all 0.1s;
   border:1.5px solid var(--border2); background:var(--surface2);
   color:var(--text-dim); user-select:none; letter-spacing:0.5px;
   display:flex; align-items:center; justify-content:center;
   flex-shrink:0;
 }
-/* Natural notes: wider */
-.note-btn.natural {
-  width:58px; height:52px; font-size:15px;
-}
-/* Accidentals: narrower, visually recessed */
+/* Accidentals slightly visually distinct — darker background */
 .note-btn.accidental {
-  width:46px; height:44px; font-size:12px;
-  background:#141310; border-color:#2a2820; color:#5a5648;
+  background:#141310; border-color:#2a2820; color:#6a6458;
 }
-/* Spacer for accidental row alignment */
-.acc-spacer { flex-shrink:0; }
 
 .note-btn:hover:not(:disabled) { border-color:var(--accent); color:var(--text); background:#252420; }
 .note-btn.selected {
   background:#252210; border-color:var(--accent); color:var(--accent);
   box-shadow:0 0 0 1px var(--accent);
-}
-.note-btn.accidental.selected {
-  background:#252210; border-color:var(--accent); color:var(--accent);
 }
 .note-btn.correct {
   background:var(--green-bg); border-color:var(--green-str); color:var(--green);
@@ -182,7 +169,7 @@ h1 { font-family:var(--display-font); font-size:34px; letter-spacing:5px; color:
 }
 .note-btn.reveal {
   background:var(--green-bg); border-color:var(--green-str); color:var(--green);
-  opacity:0.6;
+  opacity:0.55;
 }
 .note-btn:disabled { cursor:default; }
 
@@ -420,9 +407,6 @@ function dn(noteStr, keyRoot) {
 }
 
 // The 7 natural notes and their chromatic indices
-const NATURALS    = [0,2,4,5,7,9,11]; // C D E F G A B
-const ACCIDENTALS = [1,3,6,8,10];     // C# D# F# G# A#
-
 function triadNotes(ri, quality) {
   return (quality==='maj'?[0,4,7]:[0,3,7]).map(i=>(ri+i)%12);
 }
@@ -478,8 +462,8 @@ function buildDeck(cats) {
         cat:     'KEY SIGNATURES',
         q:       `What are the accidentals in ${ks.disp}?`,
         instruct: needed === 0
-          ? `C major has no sharps or flats — hit CHECK with nothing selected`
-          : `Select all ${needed} accidental${needed>1?'s':''}`,
+          ? `C major has no accidentals — hit CHECK with nothing selected`
+          : `Select the ${needed} accidental${needed>1?'s':''}  ·  then hit CHECK`,
         answer:  new Set(ks.notes),
         answerStr: ks.notes.length ? ks.notes.map(n=>dn(NOTES[n],ri)).join('  ') : 'None',
         needed,
@@ -510,124 +494,24 @@ async function save(d) {
 }
 
 // ── Chromatic keyboard builder ────────────────────────────────────────
-// Layout: two rows — natural notes on top, accidentals below
-// Accidentals are offset to sit between their natural neighbors visually
-// Natural: C  D  E  F  G  A  B    (indices 0,2,4,5,7,9,11)
-// Acc:      C# D#   F# G# A#      (indices 1,3, ,6,8,10)
-// Acc positions between naturals: C#=between C&D, D#=between D&E, gap at E-F, F#=between F&G, G#=between G&A, A#=between A&B
-
-const NAT_BTNW = 58, NAT_GAP = 5;
-const ACC_BTNW = 46, ACC_GAP = 5;
-
-// Map: for each accidental (chromatic idx), which offset position in the natural row it sits after
-// C(0)=pos0, D(2)=pos1, E(4)=pos2, F(5)=pos3, G(7)=pos4, A(9)=pos5, B(11)=pos6
-// C#(1) sits between pos0 and pos1 → offset = pos0 right edge + gap/2
-// D#(3) between pos1 and pos2
-// F#(6) between pos3 and pos4
-// G#(8) between pos4 and pos5
-// A#(10) between pos5 and pos6
+// Single flat row: all 12 notes in chromatic order C C# D D# E F F# G G# A A# B
+// Accidentals are visually slightly distinct but same size and in sequence
 
 function buildKeyboard(keyRoot, isKeySig) {
   const rows = document.getElementById('chromRows');
   rows.innerHTML = '';
-
-  // Natural row
-  const natRow = document.createElement('div');
-  natRow.className = 'chrom-natural';
-
-  // Accidental row — we'll use a flex row with spacers
-  const accRow = document.createElement('div');
-  accRow.className = 'chrom-accidental';
-  accRow.style.display = 'flex';
-  accRow.style.gap = '0';
-  accRow.style.alignItems = 'center';
-
-  // Natural buttons
-  NATURALS.forEach((ni, pos) => {
-    const btn = makeNoteBtn(ni, 'natural', keyRoot, isKeySig);
-    natRow.appendChild(btn);
-  });
-
-  // Accidental row layout:
-  // Before C# : half a natural btn + half a gap  (= (NAT_BTNW/2 + NAT_GAP/2) - (ACC_BTNW/2))
-  // C# D#  [wide gap at E-F]  F# G# A#
-  // Spacer sizes computed so acc btn center aligns with the boundary between adjacent naturals.
-  // Center of C# = C.center + (NAT_BTNW+NAT_GAP)/2
-  // C.center = NAT_BTNW/2
-  // So C# left edge = C.center + (NAT_BTNW+NAT_GAP)/2 - ACC_BTNW/2
-
-  const unit = NAT_BTNW + NAT_GAP; // 63px
-  // acc positions by index in ACCIDENTALS: [C#, D#, F#, G#, A#]
-  // centers in natural row coordinate space:
-  // C# center = 0.5*NAT_BTNW + unit        = 29 + 63 = 92  (1 full unit from C left edge + 0.5 btn)
-  // Actually let's think of each natural as occupying a "slot" of width unit.
-  // Natural slot n starts at n*unit.
-  // C=slot0, D=slot1, E=slot2, F=slot3, G=slot4, A=slot5, B=slot6
-  // C# center = slot0.right + NAT_GAP/2 = NAT_BTNW + NAT_GAP/2 = 58+2.5=60.5... 
-  // Simpler: just use specific pixel offsets as left margins / spacers.
-  // Each acc btn is ACC_BTNW wide. We need spacers between them.
-  // Let's compute the left edge of each accidental:
-  // left(C#) = NAT_BTNW - ACC_BTNW/2 + NAT_GAP/2 = 58-23+2.5 = 37.5
-  // left(D#) = left(C#) + ACC_BTNW + spacer1
-  //   where spacer1 = left(D#) - (left(C#)+ACC_BTNW)
-  //   left(D#) = 2*unit - ACC_BTNW/2 - unit + ... let me just compute absolute positions.
-
-  // Absolute left of each natural btn:
-  // C:  0*(unit) = 0
-  // D:  1*(unit) = 63
-  // E:  2*(unit) = 126
-  // F:  3*(unit) = 189
-  // G:  4*(unit) = 252
-  // A:  5*(unit) = 315
-  // B:  6*(unit) = 378
-
-  // Accidental center = average of its two neighbor natural centers:
-  // C# center = (C_center + D_center)/2 = (29 + 92)/2 = 60.5 → left = 60.5 - 23 = 37.5
-  // D# center = (D_center + E_center)/2 = (92+155)/2 = 123.5 → left = 100.5
-  // F# center = (F_center + G_center)/2 = (218.5+281.5)/2 = 250 → left = 227
-  // G# center = (G_center + A_center)/2 = (281.5+344.5)/2 = 313 → left = 290
-  // A# center = (A_center + B_center)/2 = (344.5+407.5)/2 = 376 → left = 353
-
-  // So spacers (left edges): 37.5, 100.5, [gap], 227, 290, 353
-  // gaps between:
-  // before C#: 37.5
-  // C# to D#: 100.5 - (37.5+ACC_BTNW) = 100.5-83.5 = 17
-  // D# to gap: big gap → skip to F#
-  // gap size: 227 - (100.5+46) = 227-146.5 = 80.5
-  // F# to G#: 290 - (227+46) = 17
-  // G# to A#: 353 - (290+46) = 17
-
-  const accLayout = [
-    { ni: 1,  spacerBefore: 37.5 },   // C#
-    { ni: 3,  spacerBefore: 17 },     // D#
-    { ni: 6,  spacerBefore: 80.5 },   // F#  (big gap skips E-F boundary)
-    { ni: 8,  spacerBefore: 17 },     // G#
-    { ni: 10, spacerBefore: 17 },     // A#
-  ];
-
-  accLayout.forEach(({ ni, spacerBefore }) => {
-    const sp = document.createElement('div');
-    sp.style.width  = spacerBefore + 'px';
-    sp.style.flexShrink = '0';
-    accRow.appendChild(sp);
-    const btn = makeNoteBtn(ni, 'accidental', keyRoot, isKeySig);
-    btn.style.width  = ACC_BTNW + 'px';
-    btn.style.height = '44px';
-    accRow.appendChild(btn);
-  });
-
-  rows.appendChild(natRow);
-  rows.appendChild(accRow);
-}
-
-function makeNoteBtn(ni, type, keyRoot, isKeySig) {
-  const btn = document.createElement('button');
-  btn.className = `note-btn ${type}`;
-  btn.dataset.ni = ni;
-  // Display name — for key sig use flat/sharp based on key
-  btn.textContent = dn(NOTES[ni], keyRoot);
-  btn.onclick = () => toggleNote(ni, btn);
-  return btn;
+  const row = document.createElement('div');
+  row.className = 'chrom-row';
+  for (let ni = 0; ni < 12; ni++) {
+    const isAcc = [1,3,6,8,10].includes(ni);
+    const btn = document.createElement('button');
+    btn.className = `note-btn${isAcc ? ' accidental' : ''}`;
+    btn.dataset.ni = ni;
+    btn.textContent = dn(NOTES[ni], keyRoot);
+    btn.onclick = () => toggleNote(ni, btn);
+    row.appendChild(btn);
+  }
+  rows.appendChild(row);
 }
 
 // ── Session state ─────────────────────────────────────────────────────
@@ -676,8 +560,9 @@ function showQuestion() {
   // Build keyboard
   buildKeyboard(q.keyRoot, q.isKeySig);
 
-  // For C major key sig (needed=0) enable check immediately
-  document.getElementById('checkBtn').disabled = q.needed > 0;
+  // Check always enabled — player decides when they're ready
+  document.getElementById('checkBtn').disabled = false;
+  document.getElementById('checkBtn').style.display = '';
   document.getElementById('nextBtn').style.display = 'none';
   updateSelCount();
 
@@ -703,10 +588,8 @@ function toggleNote(ni, btn) {
 }
 
 function updateSelCount() {
-  const q = curQ();
   const el = document.getElementById('selCount');
-  if (q.needed === 0) { el.textContent = 'Select nothing (no accidentals)'; return; }
-  el.textContent = `${S.selected.size} / ${q.needed} selected`;
+  el.textContent = S.selected.size > 0 ? `${S.selected.size} selected` : '';
 }
 
 function checkAnswer() {
