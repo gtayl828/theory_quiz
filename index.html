@@ -519,7 +519,8 @@ function buildKeyboard(keyRoot, isKeySig) {
   rows.innerHTML = '';
   const row = document.createElement('div');
   row.className = 'chrom-row';
-  for (let ni = 0; ni < 12; ni++) {
+  const order = shuffle([0,1,2,3,4,5,6,7,8,9,10,11]);
+  for (const ni of order) {
     const isAcc = [1,3,6,8,10].includes(ni);
     const btn = document.createElement('button');
     btn.className = `note-btn${isAcc ? ' accidental' : ''}`;
