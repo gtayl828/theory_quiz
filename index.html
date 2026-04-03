@@ -82,6 +82,7 @@ h1 { font-family:var(--display-font); font-size:34px; letter-spacing:5px; color:
 .on-maj { background:var(--root-bg); border-color:var(--root-str); color:var(--accent); }
 .on-min { background:var(--min-bg);  border-color:var(--min-str);  color:var(--min-col); }
 .on-key { background:var(--blue-bg); border-color:var(--blue-str); color:var(--blue); }
+.on-flat{ background:var(--green-bg);border-color:var(--green-str);color:var(--green); }
 .start-btn {
   font-family:var(--display-font); font-size:20px; letter-spacing:4px;
   padding:14px 36px; border-radius:6px; cursor:pointer; align-self:flex-start;
@@ -323,9 +324,10 @@ h1 { font-family:var(--display-font); font-size:34px; letter-spacing:5px; color:
   <div>
     <div class="setup-label">What to include</div>
     <div class="tog-row" style="margin-top:8px;">
-      <button class="tog-btn on-maj" id="togMaj" onclick="toggleCat('maj')">Major Triads</button>
-      <button class="tog-btn"        id="togMin" onclick="toggleCat('min')">Minor Triads</button>
-      <button class="tog-btn"        id="togKey" onclick="toggleCat('key')">Key Signatures</button>
+      <button class="tog-btn on-maj" id="togMaj"   onclick="toggleCat('maj')">Major Triads</button>
+      <button class="tog-btn"        id="togMin"   onclick="toggleCat('min')">Minor Triads</button>
+      <button class="tog-btn"        id="togSharp" onclick="toggleCat('sharp')">Sharp Key Sigs</button>
+      <button class="tog-btn"        id="togFlat"  onclick="toggleCat('flat')">Flat Key Sigs</button>
     </div>
   </div>
   <button class="start-btn" onclick="startSession()">START QUIZ</button>
@@ -411,19 +413,22 @@ function triadNotes(ri, quality) {
   return (quality==='maj'?[0,4,7]:[0,3,7]).map(i=>(ri+i)%12);
 }
 
-const KEY_SIGS = [
+const KEY_SIGS_SHARP = [
   { key:'C',  disp:'C major',  acc:'None',     notes:[] },
-  { key:'G',  disp:'G major',  acc:'1 sharp',  notes:[6]  },          // F#
-  { key:'D',  disp:'D major',  acc:'2 sharps', notes:[6,1]  },        // F# C#
-  { key:'A',  disp:'A major',  acc:'3 sharps', notes:[6,1,8]  },      // F# C# G#
-  { key:'E',  disp:'E major',  acc:'4 sharps', notes:[6,1,8,3]  },    // F# C# G# D#
-  { key:'B',  disp:'B major',  acc:'5 sharps', notes:[6,1,8,3,10] },  // F# C# G# D# A#
-  { key:'F#', disp:'F♯ major', acc:'6 sharps', notes:[6,1,8,3,10,4,11] }, // includes E# and B# — display as E/B
+  { key:'G',  disp:'G major',  acc:'1 sharp',  notes:[6]           },
+  { key:'D',  disp:'D major',  acc:'2 sharps', notes:[6,1]         },
+  { key:'A',  disp:'A major',  acc:'3 sharps', notes:[6,1,8]       },
+  { key:'E',  disp:'E major',  acc:'4 sharps', notes:[6,1,8,3]     },
+  { key:'B',  disp:'B major',  acc:'5 sharps', notes:[6,1,8,3,10]  },
+  { key:'F#', disp:'F♯ major', acc:'6 sharps', notes:[6,1,8,3,10,4,11] },
   { key:'C#', disp:'C♯ major', acc:'7 sharps', notes:[6,1,8,3,10,4,11,0] },
-  { key:'F',  disp:'F major',  acc:'1 flat',   notes:[10] },           // Bb
-  { key:'A#', disp:'B♭ major', acc:'2 flats',  notes:[10,3]  },       // Bb Eb
-  { key:'D#', disp:'E♭ major', acc:'3 flats',  notes:[10,3,8]  },     // Bb Eb Ab
-  { key:'G#', disp:'A♭ major', acc:'4 flats',  notes:[10,3,8,1]  },   // Bb Eb Ab Db
+];
+const KEY_SIGS_FLAT = [
+  { key:'C',  disp:'C major',  acc:'None',    notes:[] },
+  { key:'F',  disp:'F major',  acc:'1 flat',  notes:[10]       },
+  { key:'A#', disp:'B♭ major', acc:'2 flats', notes:[10,3]     },
+  { key:'D#', disp:'E♭ major', acc:'3 flats', notes:[10,3,8]   },
+  { key:'G#', disp:'A♭ major', acc:'4 flats', notes:[10,3,8,1] },
 ];
 
 // ── Deck builder ──────────────────────────────────────────────────────
@@ -452,26 +457,29 @@ function buildDeck(cats) {
     }
   }
 
-  if (cats.has('key')) {
-    for (const ks of KEY_SIGS) {
-      const ri = NOTES.indexOf(ks.key);
-      // For C major (no accidentals) — special case, select nothing but we need a check
-      const needed = ks.notes.length === 0 ? 0 : ks.notes.length;
-      qs.push({
-        id:      `keysig_${ks.key}`,
-        cat:     'KEY SIGNATURES',
-        q:       `What are the accidentals in ${ks.disp}?`,
-        instruct: needed === 0
-          ? `C major has no accidentals — hit CHECK with nothing selected`
-          : `Select the ${needed} accidental${needed>1?'s':''}  ·  then hit CHECK`,
-        answer:  new Set(ks.notes),
-        answerStr: ks.notes.length ? ks.notes.map(n=>dn(NOTES[n],ri)).join('  ') : 'None',
-        needed,
-        color:   'var(--blue)',
-        keyRoot: ri,
-        isKeySig: true,
-        acc: ks.acc,
-      });
+  if (cats.has('sharp') || cats.has('flat')) {
+    const lists = [];
+    if (cats.has('sharp')) lists.push({ sigs: KEY_SIGS_SHARP, cat: 'SHARP KEY SIGNATURES' });
+    if (cats.has('flat'))  lists.push({ sigs: KEY_SIGS_FLAT,  cat: 'FLAT KEY SIGNATURES'  });
+    for (const { sigs, cat } of lists) {
+      for (const ks of sigs) {
+        const ri = NOTES.indexOf(ks.key);
+        const needed = ks.notes.length;
+        qs.push({
+          id:        `keysig_${cat}_${ks.key}`,
+          cat,
+          q:         `What are the accidentals in ${ks.disp}?`,
+          instruct:  needed === 0
+            ? `C major has no accidentals — hit CHECK with nothing selected`
+            : `Select the ${needed} accidental${needed>1?'s':''}  ·  then hit CHECK`,
+          answer:    new Set(ks.notes),
+          answerStr: needed ? ks.notes.map(n=>dn(NOTES[n],ri)).join('  ') : 'None',
+          needed,
+          color:     cat==='SHARP KEY SIGNATURES' ? 'var(--accent)' : 'var(--min-col)',
+          keyRoot:   ri,
+          isKeySig:  true,
+        });
+      }
     }
   }
 
@@ -521,9 +529,10 @@ const cats = new Set(['maj']);
 function toggleCat(c) {
   if (cats.has(c) && cats.size===1) return;
   cats.has(c) ? cats.delete(c) : cats.add(c);
-  document.getElementById('togMaj').className='tog-btn'+(cats.has('maj')?' on-maj':'');
-  document.getElementById('togMin').className='tog-btn'+(cats.has('min')?' on-min':'');
-  document.getElementById('togKey').className='tog-btn'+(cats.has('key')?' on-key':'');
+  document.getElementById('togMaj')  .className='tog-btn'+(cats.has('maj')  ?' on-maj':'');
+  document.getElementById('togMin')  .className='tog-btn'+(cats.has('min')  ?' on-min':'');
+  document.getElementById('togSharp').className='tog-btn'+(cats.has('sharp')?' on-key':'');
+  document.getElementById('togFlat') .className='tog-btn'+(cats.has('flat') ?' on-flat':'');
 }
 
 function startSession() {
@@ -700,7 +709,13 @@ async function renderAnalytics() {
   const oAcc=totAtt>0?Math.round(totCor/totAtt*100):0;
   const oCol=oAcc>=80?'var(--green)':oAcc>=55?'var(--accent)':'var(--red)';
 
-  const fOpts=[{k:'all',l:'All'},{k:'MAJOR TRIADS',l:'Major Triads'},{k:'MINOR TRIADS',l:'Minor Triads'},{k:'KEY SIGNATURES',l:'Key Signatures'}];
+  const fOpts=[
+    {k:'all',                  l:'All'},
+    {k:'MAJOR TRIADS',         l:'Major Triads'},
+    {k:'MINOR TRIADS',         l:'Minor Triads'},
+    {k:'SHARP KEY SIGNATURES', l:'Sharp Key Sigs'},
+    {k:'FLAT KEY SIGNATURES',  l:'Flat Key Sigs'},
+  ];
   const fRow=fOpts.map(f=>`<button class="a-f-btn${af===f.k?' on':''}" onclick="setAF('${f.k}')">${f.l}</button>`).join('');
 
   let rows=af==='all'?qArr:qArr.filter(r=>r.cat===af);
@@ -729,7 +744,7 @@ async function renderAnalytics() {
   const srows=d.sessions.slice(0,15).map(s=>{
     const c=s.acc>=80?'var(--green)':s.acc>=55?'var(--accent)':'var(--red)';
     const m=Math.floor(s.dur/60),sc=s.dur%60;
-    const ct=(s.cats||[]).map(c=>c==='maj'?'Major':c==='min'?'Minor':'Key Sigs').join(', ');
+    const ct=(s.cats||[]).map(c=>c==='maj'?'Major':c==='min'?'Minor':c==='sharp'?'Sharps':c==='flat'?'Flats':'?').join(', ');
     return `<div class="sess-row"><span class="sess-date">${fmt(s.date)}</span><span style="font-family:var(--mono-font);font-weight:700;color:${c}">${s.acc}%</span><span class="sess-detail">✓${s.got} ✗${s.miss} · ${s.total} answered · ${m}:${String(sc).padStart(2,'0')} · ${ct}</span></div>`;
   }).join('');
 
