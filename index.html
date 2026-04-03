@@ -600,8 +600,7 @@ function toggleNote(ni, btn) {
     btn.classList.add('selected');
   }
 
-  // Enable check when enough notes selected (or for C major, always enabled)
-  document.getElementById('checkBtn').disabled = (S.selected.size < q.needed) && q.needed > 0;
+  // Check is always enabled — nothing to update here
   updateSelCount();
 }
 
@@ -654,6 +653,7 @@ function nextQuestion() {
   S.idx++;
   if (S.idx >= S.deck.length) { S.deck=shuffle(S.orig); S.idx=0; }
   document.getElementById('checkBtn').style.display = '';
+  document.getElementById('nextBtn').style.display  = 'none';
   showQuestion();
 }
 
